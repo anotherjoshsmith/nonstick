@@ -2,7 +2,7 @@ import pandas as pd
 
 from sklearn.datasets import make_classification
 
-N = 900
+N = 5000
 
 # Generate data set
 X1, true_class = make_classification(n_samples=N, n_features=2,
