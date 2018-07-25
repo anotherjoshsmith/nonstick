@@ -7,11 +7,10 @@ from scipy.spatial import distance_matrix
 
 
 def main():
-    N = 900
     np.random.seed(7)
 
     # read example data
-    data = pd.read_csv('examples/example_data.csv', index_col=0)
+    data = pd.read_csv('../examples/example_data.csv', index_col=0)
     X = data.values[:, :2]
     y = data.values[:, 2]
     # scale data
@@ -19,13 +18,14 @@ def main():
     X = scaler.fit_transform(X)
 
     # get sample grid for KDE with farthest point algorithm
+    N = X.shape[0]
     M = np.sqrt(N)
     y = farthest_point_grid(X, M)
 
     P = density_estimation(X, y)
 
     plt.scatter(X[:, 0], X[:, 1], c='k', alpha=0.3, s=10)
-    plt.scatter(y[:, 0], y[:, 1], c='b', s=(P * 50) ** 2)
+    plt.scatter(y[:, 0], y[:, 1], c='b', s=(P/5))
 
     plt.show()
     print('lol')
@@ -49,23 +49,19 @@ def density_estimation(x, y):
     D = x.shape[1]
     y_dists = distance_matrix(y, y)
 
-    sigma = np.zeros(y_dists.shape[0])
-    pdf = np.zeros(y_dists.shape[0])
+    y_dists[y_dists == 0] = 1000  # large value to prevent self selection
+    delta_i = np.amin(y_dists, axis=1)
 
-    for idx in np.arange(0, y_dists.shape[0]):
-        not_idx = np.isin(np.arange(0, y_dists.shape[0]), idx, invert=True)
-        sigma[idx] = np.amin(y_dists[idx, not_idx])
+    y_x_dists = distance_matrix(y, x)
+    min_dists = np.argmin(y_x_dists, axis=0)
 
-    x_y_dists = distance_matrix(x, y)
-    min_dists = np.amin(x_y_dists, axis=1)
+    sigma_j = np.array([delta_i[idx] for idx in min_dists])
 
-    for idx in np.arange(0, y_dists.shape[0]):
-        this_y = x_y_dists[:, idx]
-        close_points = np.nonzero(this_y[np.isin(this_y, min_dists)])
-        prefactor = np.power(2 * np.pi * np.power(sigma[idx], 2.), (- D / 2.))
-        gaussians = prefactor * (np.exp(-np.power(close_points, 2.)
-                                 / (2 * np.power(sigma[idx], 2.))))
-        pdf[idx] = np.sum(gaussians)
+    prefactor = np.power(2 * np.pi * np.power(sigma_j, 2.), (- D / 2.))
+    gaussians = prefactor * (np.exp(-np.power(y_x_dists, 2.)
+                             / (2 * np.power(sigma_j, 2.))))
+
+    pdf = np.sum(gaussians, axis=1)
 
     return pdf
 
@@ -76,8 +72,6 @@ def quick_shift():
 
 def build_gmm():
     pass
-
-
 
 
 if __name__ == '__main__':
