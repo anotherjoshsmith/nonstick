@@ -19,16 +19,17 @@ def main():
 
     # get sample grid for KDE with farthest point algorithm
     N = X.shape[0]
-    M = np.sqrt(N)
+    M = np.sqrt(N).round()
     y = farthest_point_grid(X, M)
 
     P = density_estimation(X, y)
+    clust = quick_shift(y, P)
+    print('number of clusters: ', len(np.unique(clust)))
 
     plt.scatter(X[:, 0], X[:, 1], c='k', alpha=0.3, s=10)
-    plt.scatter(y[:, 0], y[:, 1], c='b', s=(P/5))
+    plt.scatter(y[:, 0], y[:, 1], c=clust, s=(P/5))
 
     plt.show()
-    print('lol')
 
 
 def calc_distances(p0, points):
@@ -41,7 +42,8 @@ def farthest_point_grid(x, m):
     distances = calc_distances(farthest_pts[0], x)
     for i in range(1, int(m)):
         farthest_pts[i] = x[np.argmax(distances)]
-        distances = np.minimum(distances, calc_distances(farthest_pts[i], x))
+        distances = np.minimum(distances,
+                               calc_distances(farthest_pts[i], x))
     return farthest_pts
 
 
@@ -66,8 +68,35 @@ def density_estimation(x, y):
     return pdf
 
 
-def quick_shift():
-    pass
+def quick_shift(y, P):
+    # get y distances
+    y_dists = distance_matrix(y, y)
+    y_dists[y_dists == 0] = 1000
+    lamb = y_dists.min(axis=0).mean() * 1.3
+
+    # create cluster id array to assign clusters
+    clusters = np.zeros_like(P)
+
+    def connect_to_neighbor(i):
+        # find points with greater probability
+        mask = np.where(P > P[i])[0]
+        # return if we hit the highest probability point
+        if len(mask) == 0:
+            return i
+
+        # get the id of the closest higher probability point
+        min_dist_id = np.argmin(y_dists[mask, i])
+        j = mask[min_dist_id]
+        if y_dists[i, j] > lamb:
+            return i
+
+        return connect_to_neighbor(j)
+
+    # for each y, climb to highest prob within lambda
+    for idx in range(0, len(P)):
+        clusters[idx] = connect_to_neighbor(idx)
+
+    return clusters
 
 
 def build_gmm():
