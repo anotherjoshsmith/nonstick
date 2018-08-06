@@ -102,6 +102,22 @@ def quick_shift(y, P):
     return clusters
 
 
+class GaussianMixtureModel:
+    def __init__(self, p, z, sigma):
+        self.p = p
+        self.z = z
+        self.sigma = sigma
+
+    def predict(self, X):
+        pass
+
+    def predict_proba(self, X):
+        pass
+
+    def score(self, X):
+        pass
+
+
 def build_gmm(y, P, clusters):
     total_P = P.sum()
     # get position of each cluster center
@@ -114,12 +130,10 @@ def build_gmm(y, P, clusters):
     for idx, clust_id in enumerate(np.unique(clusters)):
         members = np.where(clusters == clust_id)
         distances = y[members] - z_k[idx]
-        probs = P[members] / total_P
         sigma_k[idx] = np.cov(distances.T,
                               aweights=(P[members] / total_P))
 
-    # construct and return models? maybe check sklearn for format...
-    return
+    return GaussianMixtureModel(p_k, z_k, sigma_k)
 
 
 if __name__ == '__main__':
