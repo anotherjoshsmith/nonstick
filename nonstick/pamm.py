@@ -97,6 +97,13 @@ def quick_shift(y, P):
     for idx in range(0, len(P)):
         clusters[idx] = connect_to_neighbor(idx)
 
+    # combine single-member clusters w/ nearest neighbor
+    for idx, clust_id in enumerate(np.unique(clusters)):
+        members = np.where(clusters == clust_id)[0]
+        if len(members) == 1:
+            yo = np.argmin(y_dists[members[0]])
+            clusters[members[0]] = clusters[yo]
+
     return clusters
 
 
