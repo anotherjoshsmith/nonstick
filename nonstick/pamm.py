@@ -26,6 +26,7 @@ def main():
 
     P = density_estimation(X, y)
     clust = quick_shift(y, P)
+    gmm = build_gmm(y, P, clust)
     print('number of clusters: ', len(np.unique(clust)))
 
     plt.scatter(X[:, 0], X[:, 1], c='k', alpha=0.3, s=10)
@@ -77,7 +78,7 @@ def quick_shift(y, P):
     lamb = y_dists.min(axis=0).mean() * 1.3
 
     # create cluster id array to assign clusters
-    clusters = np.zeros_like(P)
+    clusters = np.zeros_like(P, dtype='int')
 
     def connect_to_neighbor(i):
         # find points with greater probability
@@ -101,8 +102,24 @@ def quick_shift(y, P):
     return clusters
 
 
-def build_gmm():
-    pass
+def build_gmm(y, P, clusters):
+    total_P = P.sum()
+    # get position of each cluster center
+    z_k = y[np.unique(clusters)].copy()
+    # get pk for cluster
+    p_k = np.array([P[np.where(clusters == clust_id)].sum()/P.sum()
+                    for clust_id in np.unique(clusters)])
+    # get sigma for each cluster
+    sigma_k = np.zeros(shape=(len(z_k), y.shape[1], y.shape[1]))
+    for idx, clust_id in enumerate(np.unique(clusters)):
+        members = np.where(clusters == clust_id)
+        distances = y[members] - z_k[idx]
+        probs = P[members] / total_P
+        sigma_k[idx] = np.cov(distances.T,
+                              aweights=(P[members] / total_P))
+
+    # construct and return models? maybe check sklearn for format...
+    return
 
 
 if __name__ == '__main__':
