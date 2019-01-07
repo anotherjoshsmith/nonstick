@@ -3,8 +3,10 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from scipy.spatial import distance_matrix
+from scipy.stats import multivariate_normal
 
 
 def main():
@@ -18,20 +20,28 @@ def main():
     # scale data
     scaler = StandardScaler()
     X = scaler.fit_transform(X)
+    X_train, X_test = train_test_split(X)
 
     # get sample grid for KDE with farthest point algorithm
     N = X.shape[0]
     M = np.sqrt(N).round()
-    y = farthest_point_grid(X, M)
+    y = farthest_point_grid(X_train, M)
 
-    P = density_estimation(X, y)
+    P = density_estimation(X_train, y)
     clust = quick_shift(y, P)
-    gmm = build_gmm(y, P, clust)
+
     print('number of clusters: ', len(np.unique(clust)))
 
-    plt.scatter(X[:, 0], X[:, 1], c='k', alpha=0.3, s=10)
-    plt.scatter(y[:, 0], y[:, 1], c=clust, s=(P/5))
+    plt.scatter(X_train[:, 0], X_train[:, 1], c='k', alpha=0.3, s=10)
+    plt.scatter(y[:, 0], y[:, 1], c=clust, s=(P / 5))
+    plt.show()
 
+    # predict with gmm
+    gmm = build_gmm(y, P, clust)
+    best = gmm.predict(X_test)
+
+    plt.scatter(X_train[:, 0], X_train[:, 1], c='k', alpha=0.3, s=10)
+    plt.scatter(X_test[:, 0], X_test[:, 1], c=best, s=20)
     plt.show()
 
 
@@ -116,10 +126,43 @@ class GaussianMixtureModel:
         self.sigma = sigma
 
     def predict(self, X):
-        pass
+        """
+        Predict the labels for the data samples in X using trained model.
+
+        Parameters:
+        -----------
+        X : array-like, shape (n_samples, n_features)
+        List of n_features-dimensional data points. Each row corresponds to a single data point.
+
+        Returns:
+        --------
+        labels : array, shape (n_samples,)
+        Component labels.
+        """
+        probs = self.predict_proba(X)
+        return np.argmax(probs, axis=1)
 
     def predict_proba(self, X):
-        pass
+        """
+        Predict posterior probability of each component given the data.
+
+        Parameters:
+        -----------
+        X : array-like, shape (n_samples, n_features)
+        List of n_features-dimensional data points. Each row corresponds to a single data point.
+
+        Returns:
+        --------
+        resp : array, shape (n_samples, n_components)
+        Returns the probability each Gaussian (state) in the model given each sample.
+        """
+        probs = np.zeros([X.shape[0], len(self.p)])
+        for idx, weight in enumerate(self.p):
+            gaussian_prob = multivariate_normal(
+                self.z[idx], self.sigma[idx], allow_singular=True
+            )
+            probs[:, idx] = weight * gaussian_prob.pdf(X)
+        return probs
 
     def score(self, X):
         pass
