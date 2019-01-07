@@ -1,3 +1,4 @@
+import os.path as op
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,11 +9,12 @@ from scipy.spatial import distance_matrix
 
 def main():
     np.random.seed(7)
-
+    data_dir = op.join(op.dirname(__file__), '../examples')
+    data_file = op.join(data_dir, 'example_data.csv')
     # read example data
-    data = pd.read_csv('../examples/example_data.csv', index_col=0)
+    data = pd.read_csv(data_file, index_col=0)
     X = data.values[:, :2]
-    y = data.values[:, 2]
+
     # scale data
     scaler = StandardScaler()
     X = scaler.fit_transform(X)
