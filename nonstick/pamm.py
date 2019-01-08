@@ -32,11 +32,11 @@ def main():
 
     print("number of clusters: ", len(np.unique(clust)))
     plt.scatter(X_train[:, 0], X_train[:, 1], c="k", alpha=0.3, s=10)
-    plt.scatter(y[:, 0], y[:, 1], c=clust, s=(P / 5))
+    plt.scatter(Y[:, 0], Y[:, 1], c=clust, s=(P / 5))
     plt.show()
 
     # predict with gmm
-    gmm = build_gmm(y, P, clust)
+    gmm = build_gmm(Y, P, clust)
     best = gmm.predict(X_test)
 
     plt.scatter(X_train[:, 0], X_train[:, 1], c="k", alpha=0.3, s=10)
