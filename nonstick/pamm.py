@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
+from sklearn.utils import resample
 from sklearn.preprocessing import StandardScaler
 from scipy.spatial import distance_matrix
 from scipy.stats import multivariate_normal
@@ -27,6 +28,7 @@ def main():
     N = X.shape[0]
     M = np.sqrt(N).round()
     Y = farthest_point_grid(X_train, M)
+    agglomerate(X_train, Y)
     P = density_estimation(X_train, Y)
     clust = quick_shift(Y, P)
 
@@ -118,6 +120,62 @@ def quick_shift(y, P, scaling_factor=2.0):
             clusters[members[0]] = clusters[yo]
 
     return clusters
+
+
+def agglomerate(x, y, bootstrap_attempts=100):
+    # Calculate pdf and clusters for original sample
+    p = density_estimation(x, y)
+    clusts = quick_shift(y, p)
+    unique_clusts = np.unique(clusts)
+    # get position of central clusters
+    y_k = np.array(
+        [
+            np.where(clusts == clust_id)[0]
+            for clust_id in unique_clusts
+        ]
+    )
+    Q_k = np.array(
+        [
+            p[y_k[idx]].sum()
+            for idx in range(len(unique_clusts))
+        ]
+    )
+    # number of clusters in original sample...
+    num_clusts = Q_k.shape[0]
+    a_ij = np.zeros([num_clusts, num_clusts])
+
+    # for each bootstrapped sample... get kde, and
+    for m in range(bootstrap_attempts):
+        # get bootstrapped sample (sample id m)
+        x_m = resample(x[:100])
+        # calculate pdf and clusters
+        p_m = density_estimation(x_m, y)
+        clusts_m = quick_shift(y, p_m)
+
+        unique_clusts_m = np.unique(clusts_m)
+        for k, clust_id in enumerate(unique_clusts_m):
+            # get pk for cluster
+            y_k_m = np.where(clusts_m == clust_id)[0]
+            Q_k_m = p_m[y_k_m].sum()
+
+            for i in range(num_clusts):
+                Q_i = p_m[y_k[i]].sum()
+                y_ikm = np.intersect1d(y_k[i], y_k_m)
+                Q_ikm = p_m[y_ikm].sum() / Q_k_m
+
+                for j in range(num_clusts):
+                    if j >= i:
+                        Q_j = p_m[y_k[j]].sum()
+                        y_jkm = np.intersect1d(y_k[j], y_k_m)
+                        Q_jkm = p_m[y_jkm].sum() / Q_k_m
+                        a_ij[i, j] += (
+                            Q_k_m * Q_ikm * Q_jkm
+                            / (bootstrap_attempts * np.sqrt(Q_i * Q_j))
+                        )
+                        if i != j and i != k and Q_jkm * Q_ikm != 0:
+                            print(a_ij[i, j])
+
+    return a_ij
 
 
 class GaussianMixtureModel:
