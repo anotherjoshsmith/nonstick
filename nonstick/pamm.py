@@ -8,6 +8,8 @@ from sklearn.utils import resample
 from sklearn.preprocessing import StandardScaler
 from scipy.spatial import distance_matrix
 from scipy.stats import multivariate_normal
+import scipy.cluster.hierarchy
+from scipy.spatial.distance import squareform
 
 
 def main():
@@ -28,13 +30,21 @@ def main():
     N = X.shape[0]
     M = np.sqrt(N).round()
     Y = farthest_point_grid(X_train, M)
-    agglomerate(X_train, Y)
     P = density_estimation(X_train, Y)
     clust = quick_shift(Y, P)
+    unique_clusts = np.unique(clust)
+    # predict with gmm
+    agg = agglomerate(X_train, Y)
+
+    agg_clust_id = np.zeros_like(clust)
+    for idx, val in enumerate(clust):
+        agg_clust_id[idx] = agg[np.where(unique_clusts == val)[0]]
 
     print("number of clusters: ", len(np.unique(clust)))
     plt.scatter(X_train[:, 0], X_train[:, 1], c="k", alpha=0.3, s=10)
-    plt.scatter(Y[:, 0], Y[:, 1], c=clust, s=(P / 10))
+
+    plt.scatter(Y[:, 0], Y[:, 1], c=agg_clust_id, s=(P / 5))
+
     plt.show()
 
     # predict with gmm
@@ -43,6 +53,7 @@ def main():
 
     plt.scatter(X_train[:, 0], X_train[:, 1], c="k", alpha=0.3, s=10)
     plt.scatter(X_test[:, 0], X_test[:, 1], c=best, s=20)
+    plt.colorbar()
     plt.show()
 
 
@@ -147,7 +158,7 @@ def agglomerate(x, y, bootstrap_attempts=100):
     # for each bootstrapped sample... get kde, and
     for m in range(bootstrap_attempts):
         # get bootstrapped sample (sample id m)
-        x_m = resample(x[:100])
+        x_m = resample(x, n_samples=1000)
         # calculate pdf and clusters
         p_m = density_estimation(x_m, y)
         clusts_m = quick_shift(y, p_m)
@@ -168,14 +179,21 @@ def agglomerate(x, y, bootstrap_attempts=100):
                         Q_j = p_m[y_k[j]].sum()
                         y_jkm = np.intersect1d(y_k[j], y_k_m)
                         Q_jkm = p_m[y_jkm].sum() / Q_k_m
-                        a_ij[i, j] += (
+                        a = (
                             Q_k_m * Q_ikm * Q_jkm
                             / (bootstrap_attempts * np.sqrt(Q_i * Q_j))
                         )
-                        if i != j and i != k and Q_jkm * Q_ikm != 0:
-                            print(a_ij[i, j])
+                        a_ij[i, j] += a
+                        if i != j:
+                            a_ij[j, i] += a
 
-    return a_ij
+    # identify metaclusters
+    assert np.all(a_ij - a_ij.T < 1e-6)
+    reduced_distances = squareform(a_ij, checks=False)
+    linkage = scipy.cluster.hierarchy.ward(reduced_distances)
+    fclust_id = scipy.cluster.hierarchy.fcluster(linkage, t=3, criterion='maxclust')
+
+    return fclust_id
 
 
 class GaussianMixtureModel:
