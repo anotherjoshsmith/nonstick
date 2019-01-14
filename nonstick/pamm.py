@@ -32,6 +32,7 @@ def main():
     Y = farthest_point_grid(X_train, M)
     P = density_estimation(X_train, Y)
     clust = quick_shift(Y, P)
+
     unique_clusts = np.unique(clust)
     # predict with gmm
     agg = agglomerate(X_train, Y)
@@ -158,7 +159,7 @@ def agglomerate(x, y, bootstrap_attempts=100):
     # for each bootstrapped sample... get kde, and
     for m in range(bootstrap_attempts):
         # get bootstrapped sample (sample id m)
-        x_m = resample(x, n_samples=1000)
+        x_m = resample(x)
         # calculate pdf and clusters
         p_m = density_estimation(x_m, y)
         clusts_m = quick_shift(y, p_m)
