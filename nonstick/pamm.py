@@ -30,6 +30,7 @@ def main():
     N = X.shape[0]
     M = np.sqrt(N).round()
     Y = farthest_point_grid(X_train, M)
+    agglomerate(X_train, Y)
     P = density_estimation(X_train, Y)
     clust = quick_shift(Y, P)
 
@@ -180,6 +181,7 @@ def agglomerate(x, y, bootstrap_attempts=100):
                         Q_j = p_m[y_k[j]].sum()
                         y_jkm = np.intersect1d(y_k[j], y_k_m)
                         Q_jkm = p_m[y_jkm].sum() / Q_k_m
+
                         a = (
                             Q_k_m * Q_ikm * Q_jkm
                             / (bootstrap_attempts * np.sqrt(Q_i * Q_j))
