@@ -15,7 +15,7 @@ def main():
     data_file = op.join(data_dir, "example_data.csv")
     # read example data
     data = pd.read_csv(data_file, index_col=0)
-    X = data.values[:, :2]
+    X = data.values[:, :3]  # include class as third dimension
     y = data.values[:, 2]
 
     # scale data
@@ -32,7 +32,7 @@ def main():
 
     print("number of clusters: ", len(np.unique(clust)))
     plt.scatter(X_train[:, 0], X_train[:, 1], c="k", alpha=0.3, s=10)
-    plt.scatter(Y[:, 0], Y[:, 1], c=clust, s=(P / 5))
+    plt.scatter(Y[:, 0], Y[:, 1], c=clust, s=(P / 10))
     plt.show()
 
     # predict with gmm
@@ -49,9 +49,11 @@ def calc_distances(p0, points):
 
 
 def farthest_point_grid(x, m):
-    farthest_pts = np.zeros((int(m), 2))
+    farthest_pts = np.zeros((int(m), x.shape[1]))
+    # select random point as first grid point
     farthest_pts[0] = x[np.random.randint(len(x))]
     distances = calc_distances(farthest_pts[0], x)
+    # iteratively select farthest remaining point
     for i in range(1, int(m)):
         farthest_pts[i] = x[np.argmax(distances)]
         distances = np.minimum(distances, calc_distances(farthest_pts[i], x))
@@ -80,11 +82,11 @@ def density_estimation(x, y):
     return pdf
 
 
-def quick_shift(y, P):
+def quick_shift(y, P, scaling_factor=2.0):
     # get y distances
     y_dists = distance_matrix(y, y)
     y_dists[y_dists == 0] = 1000
-    lamb = y_dists.min(axis=0).mean() * 1.3
+    lamb = y_dists.min(axis=0).mean() * scaling_factor
 
     # create cluster id array to assign clusters
     clusters = np.zeros_like(P, dtype="int")
